@@ -28,11 +28,11 @@ services:
 
   postgres:
     image: postgres:17
-    container_name: postgres-db
+    container_name: test-db
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydb
+      POSTGRES_DB: testdb
     ports:
       - "5432:5432"
     volumes:
