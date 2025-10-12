@@ -4,11 +4,20 @@ services:
   go:
     image: golang:1.25.0
     container_name: test-one
-    working_dir: /test1-national-inservice-api
+    working_dir: /app
     volumes:
       - ./app:/test1-national-inservice-api
       - ./migrations:/migrations
-    command: go run ./cmd/api -port=8081 -db-dsn=postgres://user:password@postgres/mydb?sslmode=disable -cors-trusted-origins="http://localhost:8080"
+    command: go run ./cmd/api 
+             -port=8081 
+             -db-dsn=postgres://user:password@postgres/mydb?sslmode=disable 
+             -cors-trusted-origins="http://localhost:8080"
+    environment:
+      - DATABASE_URL=postgres://user:password@postgres:5432/testdb?sslmode=disable
+      - PORT=8081
+      - RATE_LIMIT_RPS=5
+      - RATE_LIMIT_BURST=10
+      - CORS_ALLOWED_ORIGINS=http://localhost:8080
     ports:
       - "8081:8081"
     networks:

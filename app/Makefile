@@ -1,0 +1,64 @@
+.PHONY: build up down migrate test fmt vet lint run/api
+
+build:
+	docker build -t national-inservice-api .
+
+run/api:
+	@echo '-- Running application --'
+	@docker compose exec go run ./cmd/api -port=8081 -db-dsn=postgres://user:password@postgres/mydb?sslmode=disable -cors-trusted-origins="http://localhost:8080"
+	@echo '-- Application stopped --'
+
+.PHONY: migrate/up
+migrate/up:
+	@docker run --rm -v ./app/migrations:/migrations --network podman-docker-compose-files_backend migrate/migrate \
+		-path=/migrations -database "postgres://user:password@postgres/mydb?sslmode=disable" up
+
+## db/migrations/new name=$1: create a new database migration
+.PHONY: db/migrations/new
+db/migrations/new:
+	@echo "Creating migration files for ${name}..."
+	docker run --rm -v $$(pwd)/migrations:/migrations migrate/migrate create -seq -ext=.sql -dir=/migrations ${name}
+
+## db/migrations/up: apply all migrations
+.PHONY: db/migrations/up
+db/migrations/up:
+	@echo "Running up migrations..."
+	docker compose run --rm migrate up
+
+## db/migrations/down: rollback last migration
+.PHONY: db/migrations/down
+db/migrations/down:
+	@echo "Rolling back last migration..."
+	docker compose run --rm migrate down 1
+
+## db/migrations/force version=$1: force database version
+.PHONY: db/migrations/force
+db/migrations/force:
+	@echo "Forcing version to ${version}..."
+	docker compose run --rm migrate force ${version}
+
+## db/psql: connect to PostgreSQL using psql
+.PHONY: db/psql
+db/psql:
+	docker exec -it postgres-db psql -U user -d mydb
+
+up:
+	docker compose up -d
+down:
+	docker compose down
+test:	
+	@echo '-- Running tests --'
+	@docker compose exec go go test -v ./...
+	@echo '-- Tests completed --'
+fmt:
+	@echo '-- Running gofmt --'
+	@docker compose exec go gofmt -l -w .
+	@echo '-- gofmt completed --'
+vet:
+	@echo '-- Running govet --'
+	@docker compose exec go go vet ./...
+	@echo '-- govet completed --'
+lint:
+	@echo '-- Running golangci-lint --'
+	@docker compose exec go golangci-lint run
+	@echo '-- golangci-lint completed --'	
