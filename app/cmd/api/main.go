@@ -35,7 +35,7 @@ func main() {
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{cfg.CORSAllowedOrigins}, // change as needed
+		AllowedOrigins:   []string{cfg.CORSAllowedOrigins}, // e.g. "https://foo.com" or "http://evil.com"
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
@@ -57,8 +57,8 @@ func main() {
 			r.Get("/", h.ListPersons)    // list with pagination & sorting
 			r.Post("/", h.CreatePerson)  // create
 			r.Get("/{id}", h.GetPerson)  // read
-			r.Put("/{id}", h.UpdatePerson)
-			r.Delete("/{id}", h.DeletePerson)
+			r.Put("/{id}", h.UpdatePerson)// update
+			r.Delete("/{id}", h.DeletePerson)// delete
 		})
 	})
 
