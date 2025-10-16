@@ -10,7 +10,7 @@ run/api:
 
 .PHONY: migrate/up
 migrate/up:
-	@docker run --rm -v ./app/migrations:/migrations --network podman-docker-compose-files_backend migrate/migrate \
+	@docker run --rm -v ./app/migrations:/migrations --network podman-docker-compose-files_backend migrate/migrate
 		-path=/migrations -database "postgres://user:password@postgres/mydb?sslmode=disable" up
 
 ## db/migrations/new name=$1: create a new database migration
