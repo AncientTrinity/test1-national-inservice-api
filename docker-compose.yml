@@ -1,4 +1,4 @@
-version: "3.9"
+
 
 services:
   go:
@@ -6,11 +6,11 @@ services:
     container_name: test-one
     working_dir: /app
     volumes:
-      - ./app:/test1-national-inservice-api
+      - ./app:/app
       - ./migrations:/migrations
     command: go run ./cmd/api 
              -port=8081 
-             -db-dsn=postgres://user:password@postgres/mydb?sslmode=disable 
+             -db-dsn=postgres://user:password@postgres/testdb?sslmode=disable 
              -cors-trusted-origins="http://localhost:8080"
     environment:
       - DATABASE_URL=postgres://user:password@postgres:5432/testdb?sslmode=disable
@@ -62,7 +62,7 @@ services:
     entrypoint: [
       "migrate",
       "-path", "/migrations",
-      "-database", "postgres://user:password@postgres/mydb?sslmode=disable"
+      "-database", "postgres://user:password@postgres/testdb?sslmode=disable"
     ]
     command: ["up"]
 
