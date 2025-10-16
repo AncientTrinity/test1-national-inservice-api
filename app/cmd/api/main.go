@@ -29,36 +29,37 @@ func main() {
 		fmt.Println("db connect:", err)
 		os.Exit(1)
 	}
-	defer pool.Close(context.Background())
+
+	defer pool.Close()
 
 	r := chi.NewRouter()
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{cfg.CORSAllowedOrigins}, // e.g. "https://foo.com" or "http://evil.com"
+		AllowedOrigins:   []string{cfg.CORSAllowedOrigins},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
 
-	// rate limiting (simple per-process token bucket)
+	// Rate limiting
 	rl := middleware.NewRateLimiter(cfg.RateLimitRPS, cfg.RateLimitBurst)
 	r.Use(rl.LimitMiddleware)
 
 	// JSON content type
 	r.Use(middleware.JSONMiddleware)
 
-	// handlers
+	// Handlers
 	h := handlers.NewHandler(pool)
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Route("/persons", func(r chi.Router) {
-			r.Get("/", h.ListPersons)    // list with pagination & sorting
-			r.Post("/", h.CreatePerson)  // create
-			r.Get("/{id}", h.GetPerson)  // read
-			r.Put("/{id}", h.UpdatePerson)// update
-			r.Delete("/{id}", h.DeletePerson)// delete
+			r.Get("/", h.ListPersons)       // list with pagination & sorting
+			r.Post("/", h.CreatePerson)     // create
+			r.Get("/{id}", h.GetPerson)     // read
+			r.Put("/{id}", h.UpdatePerson)  // update
+			r.Delete("/{id}", h.DeletePerson) // delete
 		})
 	})
 
@@ -67,7 +68,7 @@ func main() {
 		Handler: r,
 	}
 
-	// graceful shutdown
+	// Graceful shutdown
 	idleConnsClosed := make(chan struct{})
 	go func() {
 		c := make(chan os.Signal, 1)
@@ -83,6 +84,7 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Println("server error:", err)
 	}
+
 	<-idleConnsClosed
 	fmt.Println("server stopped gracefully")
 }
