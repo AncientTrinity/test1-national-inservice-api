@@ -12,15 +12,15 @@ import (
 	"victortillett.net/test1-national-inservice-api/internal/db"
 	"victortillett.net/test1-national-inservice-api/internal/handlers"
 	"victortillett.net/test1-national-inservice-api/internal/middleware"
-
+	
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/cors"
+	chiCors "github.com/go-chi/cors"
 )
 
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Println("failed to load config:", err)
+		fmt.Println("config error:", err)
 		os.Exit(1)
 	}
 
@@ -29,13 +29,12 @@ func main() {
 		fmt.Println("db connect:", err)
 		os.Exit(1)
 	}
-
-	defer pool.Close()
+	defer pool.Close(context.Background())
 
 	r := chi.NewRouter()
 
 	// CORS
-	r.Use(cors.Handler(cors.Options{
+	r.Use(chiCors.Handler(chiCors.Options{
 		AllowedOrigins:   []string{cfg.CORSAllowedOrigins},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
@@ -43,24 +42,41 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	// Rate limiting
+	// JSON header
+	r.Use(middleware.JSONMiddleware)
+
+	// Rate limiter
 	rl := middleware.NewRateLimiter(cfg.RateLimitRPS, cfg.RateLimitBurst)
 	r.Use(rl.LimitMiddleware)
 
-	// JSON content type
-	r.Use(middleware.JSONMiddleware)
-
-	// Handlers
 	h := handlers.NewHandler(pool)
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Route("/persons", func(r chi.Router) {
-			r.Get("/", h.ListPersons)       // list with pagination & sorting
-			r.Post("/", h.CreatePerson)     // create
-			r.Get("/{id}", h.GetPerson)     // read
-			r.Put("/{id}", h.UpdatePerson)  // update
-			r.Delete("/{id}", h.DeletePerson) // delete
+			r.Get("/", h.ListPersons)
+			r.Post("/", h.CreatePerson)
+			r.Get("/{id}", h.GetPerson)
+			r.Put("/{id}", h.UpdatePerson)
+			r.Delete("/{id}", h.DeletePerson)
 		})
+
+		r.Route("/courses", func(r chi.Router) {
+			r.Get("/", h.ListCourses)
+			r.Post("/", h.CreateCourse)
+			r.Get("/{id}", h.GetCourse)
+			r.Put("/{id}", h.UpdateCourse)
+			r.Delete("/{id}", h.DeleteCourse)
+		})
+
+		r.Route("/participants", func(r chi.Router) {
+			r.Get("/", h.ListParticipants)
+			r.Post("/", h.CreateParticipant)
+			r.Get("/{id}", h.GetParticipant)
+			r.Put("/{id}", h.UpdateParticipant)
+			r.Delete("/{id}", h.DeleteParticipant)
+		})
+
+		// add more resource routes (facilitators, formations, etc.) similarly
 	})
 
 	srv := &http.Server{
@@ -68,23 +84,22 @@ func main() {
 		Handler: r,
 	}
 
-	// Graceful shutdown
-	idleConnsClosed := make(chan struct{})
+	// graceful shutdown
+	idle := make(chan struct{})
 	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		<-c
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt)
+		<-stop
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
 		_ = srv.Shutdown(ctx)
-		close(idleConnsClosed)
+		close(idle)
 	}()
 
-	fmt.Println("server listening on", cfg.Port)
+	fmt.Printf("listening on %s\n", cfg.Port)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Println("server error:", err)
 	}
-
-	<-idleConnsClosed
-	fmt.Println("server stopped gracefully")
+	<-idle
+	fmt.Println("server stopped")
 }

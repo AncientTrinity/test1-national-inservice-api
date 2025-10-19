@@ -3,3 +3,8 @@ DROP TABLE IF EXISTS postings_units;
 DROP TABLE IF EXISTS formations;
 DROP TABLE IF EXISTS region;
 DROP TABLE IF EXISTS rank;
+DROP TABLE IF EXISTS account;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS facilitators;
+DROP TABLE IF EXISTS participant;
+
