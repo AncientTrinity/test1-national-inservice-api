@@ -12,7 +12,7 @@ import (
 	"victortillett.net/test1-national-inservice-api/internal/db"
 	"victortillett.net/test1-national-inservice-api/internal/handlers"
 	"victortillett.net/test1-national-inservice-api/internal/middleware"
-	
+
 	"github.com/go-chi/chi/v5"
 	chiCors "github.com/go-chi/cors"
 )
@@ -29,7 +29,7 @@ func main() {
 		fmt.Println("db connect:", err)
 		os.Exit(1)
 	}
-	defer pool.Close(context.Background())
+	 defer pool.Close()
 
 	r := chi.NewRouter()
 
