@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Participant struct {
@@ -24,16 +25,16 @@ func CreateParticipant(ctx context.Context, tx pgx.Tx, p *Participant) (int64, e
 	return id, err
 }
 
-func GetParticipantByID(ctx context.Context, q pgxpool.Pool, id int64) (*Participant, error) {
-	row := q.QueryRow(ctx, `SELECT participant_id, course_session_id, person_id, status, credit_awarded, note, created_at FROM participant WHERE participant_id=$1`, id)
-	var p Participant
-	if err := row.Scan(&p.ParticipantID, &p.CourseSessionID, &p.PersonID, &p.Status, &p.CreditAwarded, &p.Note, &p.CreatedAt); err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &p, nil
+func GetParticipantByID(ctx context.Context, db *pgxpool.Pool, id int64) (*Participant, error) {
+    row := db.QueryRow(ctx, `SELECT participant_id, person_id, course_id, registration_date FROM participant WHERE participant_id=$1`, id)
+    var p Participant
+    if err := row.Scan(&p.ParticipantID, &p.PersonID, &p.CourseID, &p.RegistrationDate); err != nil {
+        if err == pgx.ErrNoRows {
+            return nil, nil
+        }
+        return nil, err
+    }
+    return &p, nil
 }
 
 func UpdateParticipant(ctx context.Context, tx pgx.Tx, p *Participant) error {

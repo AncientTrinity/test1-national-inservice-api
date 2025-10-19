@@ -7,18 +7,11 @@ import (
 	"strconv"
 
 	"victortillett.net/test1-national-inservice-api/internal/models"
-	"github.com/jackc/pgx/v5/pgxpool"
+	//"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/go-chi/chi/v5"
 )
 
-type Handler struct {
-	db *pgxpool.Pool
-}
-
-func NewHandler(db *pgxpool.Pool) *Handler {
-	return &Handler{db: db}
-}
 
 func (h *Handler) CreatePerson(w http.ResponseWriter, r *http.Request) {
 	var p models.Person
