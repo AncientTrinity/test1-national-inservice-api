@@ -8,7 +8,7 @@ services:
     volumes:
       - ./app:/app
       - ./migrations:/migrations
-    command: go run ./cmd/api 
+    command: go run ./cmd/api
              -port=8081 
              -db-dsn=postgres://user:password@postgres/testdb?sslmode=disable 
              -cors-trusted-origins="http://localhost:8080"
