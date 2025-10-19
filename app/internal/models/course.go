@@ -27,7 +27,7 @@ func CreateCourse(ctx context.Context, tx pgx.Tx, c *Course) (int64, error) {
 	return id, err
 }
 
-func GetCourseByID(ctx context.Context, q pgx.Queryer, id int64) (*Course, error) {
+func GetCourseByID(ctx context.Context, q pgxpool.Pool, id int64) (*Course, error) {
 	row := q.QueryRow(ctx, `SELECT course_id, code, title, description, category, credit_hours, is_course_active, rating, created_at FROM courses WHERE course_id=$1`, id)
 	var c Course
 	if err := row.Scan(&c.CourseID, &c.Code, &c.Title, &c.Description, &c.Category, &c.CreditHours, &c.IsActive, &c.Rating, &c.CreatedAt); err != nil {

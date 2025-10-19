@@ -23,7 +23,7 @@ func CreateAccount(ctx context.Context, tx pgx.Tx, a *Account) (int64, error) {
 		a.PersonID, a.Email, a.PasswordHash, a.Role, a.IsActive).Scan(&id)
 	return id, err
 }
-func GetAccountByID(ctx context.Context, q pgx.Queryer, id int64) (*Account, error) {
+func GetAccountByID(ctx context.Context, q pgxpool.Pool, id int64) (*Account, error) {
 	row := q.QueryRow(ctx, `SELECT account_id, person_id, email, password_hash, role, is_active, created_at FROM account WHERE account_id=$1`, id)
 	var a Account
 	if err := row.Scan(&a.AccountID, &a.PersonID, &a.Email, &a.PasswordHash, &a.Role, &a.IsActive, &a.CreatedAt); err != nil {
