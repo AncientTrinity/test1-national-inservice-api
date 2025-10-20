@@ -31,3 +31,16 @@ func getenv(k, d string) string {
 	}
 	return d
 }
+
+JWTSecret := os.Getenv("JWT_SECRET")
+jwtExpHours := 24
+if v := os.Getenv("JWT_EXP_HOURS"); v != "" {
+   val, _ := strconv.Atoi(v)
+   jwtExpHours = val
+}
+allowed := []string{"*"}
+if v := os.Getenv("CORS_ALLOWED_ORIGINS"); v != "" {
+  allowed = strings.Split(v, ",")
+}
+
+

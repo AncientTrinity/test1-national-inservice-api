@@ -46,3 +46,15 @@ func DeleteAccount(ctx context.Context, tx pgx.Tx, id int64) error {
 	_, err := tx.Exec(ctx, `DELETE FROM account WHERE account_id=$1`, id)
 	return err
 }
+
+func GetAccountByEmail(ctx context.Context, db *pgxpool.Pool, email string) (*Account, error) {
+	row := db.QueryRow(ctx, `SELECT account_id, person_id, email, password_hash, role, is_active, created_at FROM account WHERE email=$1`, email)
+	var a Account
+	if err := row.Scan(&a.AccountID, &a.PersonID, &a.Email, &a.PasswordHash, &a.Role, &a.IsActive, &a.CreatedAt); err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &a, nil
+}
