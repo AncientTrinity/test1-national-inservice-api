@@ -51,6 +51,8 @@ func main() {
 
 	h := handlers.NewHandler(pool)
 
+	r.Get("/metrics", h.MetricsHandler)
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Route("/persons", func(r chi.Router) {
 			r.Get("/", h.ListPersons)

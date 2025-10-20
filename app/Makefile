@@ -5,13 +5,13 @@ build:
 
 run/api:
 	@echo '-- Running application --'
-	@docker compose exec go run ./cmd/api -port=8081 -db-dsn=postgres://user:password@postgres/mydb?sslmode=disable -cors-trusted-origins="http://localhost:8080"
+	@docker compose exec go run ./cmd/api -port=8081 -db-dsn=postgres://user:password@postgres/testdb?sslmode=disable -cors-trusted-origins="http://localhost:8080"
 	@echo '-- Application stopped --'
 
 .PHONY: migrate/up
 migrate/up:
 	@docker run --rm -v ./app/migrations:/migrations --network podman-docker-compose-files_backend migrate/migrate
-		-path=/migrations -database "postgres://user:password@postgres/mydb?sslmode=disable" up
+		-path=/migrations -database "postgres://user:password@postgres/testdb?sslmode=disable" up
 
 ## db/migrations/new name=$1: create a new database migration
 .PHONY: db/migrations/new
@@ -40,14 +40,15 @@ db/migrations/force:
 ## db/psql: connect to PostgreSQL using psql
 .PHONY: db/psql
 db/psql:
-	docker exec -it postgres-db psql -U user -d mydb
+	docker exec -it postgres-db psql -U user -d testdb
 
 up:
 	docker compose up -d
 down:
 	docker compose down
 test:	
-	@echo '-- Running tests --'
+	@echo "Running tests..."
+	@cd app && go test ./... -v
 	@docker compose exec go go test -v ./...
 	@echo '-- Tests completed --'
 fmt:

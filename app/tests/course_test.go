@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"app/internal/config"
-	"app/internal/db"
-	"app/internal/handlers"
+	"victortillett.net/test1-national-inservice-api/internal/config"
+	"victortillett.net/test1-national-inservice-api/internal/db"
+	"victortillett.net/test1-national-inservice-api/internal/handlers"
 
 	"github.com/go-chi/chi/v5"
 )
