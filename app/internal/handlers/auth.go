@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"context"
+	//"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -11,7 +11,6 @@ import (
 	"victortillett.net/test1-national-inservice-api/internal/services"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -54,55 +53,6 @@ func comparePassword(hash []byte, password string) error {
 	return bcrypt.CompareHashAndPassword(hash, []byte(password))
 }
 
-// Register: create account with hashed password
-func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
-	var req registerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid body", http.StatusBadRequest)
-		return
-	}
-	if req.Email == "" || req.Password == "" {
-		http.Error(w, "email and password required", http.StatusBadRequest)
-		return
-	}
-
-	ctx := r.Context()
-	tx, err := h.db.Begin(ctx)
-	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
-		return
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	pwHash, err := hashPassword(req.Password)
-	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
-		return
-	}
-
-	acc := &models.Account{
-		PersonID:     req.PersonID,
-		Email:        req.Email,
-		PasswordHash: string(pwHash),
-		Role:         req.Role,
-		IsActive:     true, // or false if you want activation flow
-		CreatedAt:    time.Now(),
-	}
-
-	id, err := models.CreateAccount(ctx, tx, acc)
-	if err != nil {
-		http.Error(w, "insert error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		http.Error(w, "commit error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]int64{"account_id": id})
-}
 
 // Login: verify credentials and return JWT
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -149,53 +99,48 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(loginResponse{Token: signed})
 }
 
-// ForgotPassword: generate token and send email (simple stub)
-func (h *AuthHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
-	type req struct {
-		Email string `json:"email"`
-	}
-	var body req
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" {
-		http.Error(w, "invalid body", http.StatusBadRequest)
-		return
-	}
-	ctx := r.Context()
-	acc, err := models.GetAccountByEmail(ctx, h.db, body.Email)
-	if err != nil {
-		http.Error(w, "db error", http.StatusInternalServerError)
-		return
-	}
-	if acc == nil {
-		// don't reveal whether email exists
-		w.WriteHeader(http.StatusAccepted)
-		return
-	}
+// Register: create account with hashed password
+// Register: create account with hashed password
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+    var req registerRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "invalid body", http.StatusBadRequest)
+        return
+    }
+    if req.Email == "" || req.Password == "" {
+        http.Error(w, "email and password required", http.StatusBadRequest)
+        return
+    }
 
-	// create a simple one-time token (signed JWT short lived)
-	claims := jwt.MapClaims{
-		"sub": acc.AccountID,
-		"exp": time.Now().Add(1 * time.Hour).Unix(),
-		"iat": time.Now().Unix(),
-		"op":  "pwreset",
-	}
-	tkn := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := tkn.SignedString(h.jwtKey)
-	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
-		return
-	}
+    ctx := r.Context()
 
-	// send email (async - fire and forget)
-	go func() {
-		ctx2, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		subject := "Password reset"
-		body := "Use this token to reset your password: " + signed
-		_ = h.email.Send(ctx2, acc.Email, subject, body) // ignore error, but you may log it
-	}()
+    pwHash, err := hashPassword(req.Password)
+    if err != nil {
+        http.Error(w, "server error", http.StatusInternalServerError)
+        return
+    }
 
-	w.WriteHeader(http.StatusAccepted)
+    acc := &models.Account{
+        PersonID:     req.PersonID,
+        Email:        req.Email,
+        PasswordHash: string(pwHash),
+        Role:         req.Role,
+        IsActive:     true,
+        CreatedAt:    time.Now(),
+    }
+
+    // ✅ Insert into DB using your model
+    id, err := models.CreateAccount(ctx, h.db, acc)
+    if err != nil {
+        http.Error(w, "insert error: "+err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // ✅ Return created ID
+    w.WriteHeader(http.StatusCreated)
+    json.NewEncoder(w).Encode(map[string]int64{"account_id": id})
 }
+
 
 // ResetPassword: accept token + new password
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {

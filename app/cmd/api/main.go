@@ -2,38 +2,42 @@ package main
 
 import (
 	"context"
-	"fmt"
+	//"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"victortillett.net/test1-national-inservice-api/internal/config"
 	"victortillett.net/test1-national-inservice-api/internal/db"
 	"victortillett.net/test1-national-inservice-api/internal/handlers"
 	"victortillett.net/test1-national-inservice-api/internal/middleware"
+	"victortillett.net/test1-national-inservice-api/internal/services"
 
 	"github.com/go-chi/chi/v5"
 	chiCors "github.com/go-chi/cors"
 )
 
 func main() {
+	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Println("config error:", err)
-		os.Exit(1)
+		log.Fatalf("config error: %v", err)
 	}
 
+	// Connect to database
 	pool, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {
-		fmt.Println("db connect:", err)
-		os.Exit(1)
+		log.Fatalf("db connect: %v", err)
 	}
-	 defer pool.Close()
+	defer pool.Close()
 
+	// Create router
 	r := chi.NewRouter()
 
-	// CORS
+	// CORS configuration
 	r.Use(chiCors.Handler(chiCors.Options{
 		AllowedOrigins:   []string{cfg.CORSAllowedOrigins},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -42,18 +46,22 @@ func main() {
 		MaxAge:           300,
 	}))
 
-	// JSON header
+	// Global middlewares
 	r.Use(middleware.JSONMiddleware)
 
 	// Rate limiter
 	rl := middleware.NewRateLimiter(cfg.RateLimitRPS, cfg.RateLimitBurst)
 	r.Use(rl.LimitMiddleware)
 
+	// Handlers
 	h := handlers.NewHandler(pool)
 
+	// Metrics
 	r.Get("/metrics", h.MetricsHandler)
 
+	// API routes
 	r.Route("/v1", func(r chi.Router) {
+		// Persons
 		r.Route("/persons", func(r chi.Router) {
 			r.Get("/", h.ListPersons)
 			r.Post("/", h.CreatePerson)
@@ -62,6 +70,7 @@ func main() {
 			r.Delete("/{id}", h.DeletePerson)
 		})
 
+		// Courses
 		r.Route("/courses", func(r chi.Router) {
 			r.Get("/", h.ListCourses)
 			r.Post("/", h.CreateCourse)
@@ -70,6 +79,7 @@ func main() {
 			r.Delete("/{id}", h.DeleteCourse)
 		})
 
+		// Participants
 		r.Route("/participants", func(r chi.Router) {
 			r.Get("/", h.ListParticipants)
 			r.Post("/", h.CreateParticipant)
@@ -78,30 +88,77 @@ func main() {
 			r.Delete("/{id}", h.DeleteParticipant)
 		})
 
-		// add more resource routes (facilitators, formations, etc.) similarly
+		// Auth setup
+		emailer := services.NewSMTPEmailer(services.SMTPConfig{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUser,
+			Password: cfg.SMTPPass,
+			From:     cfg.EmailFrom,
+		})
+
+		authHandler := handlers.NewAuthHandler(pool, []byte(cfg.JWTSecret), cfg.JWTExpiryHours, emailer)
+
+		// Auth routes
+		r.Post("/auth/register", authHandler.Register)
+		r.Post("/auth/login", authHandler.Login)
+		r.Post("/auth/reset-password", authHandler.ResetPassword)
+
+		// Protected routes example
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth([]byte(cfg.JWTSecret)))
+
+			// Example protected endpoint
+			r.Get("/v1/person/{id}", h.GetPerson)
+
+			// Admin-only routes
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireRole("admin"))
+				r.Post("/v1/courses", h.CreateCourse)
+			})
+		})
 	})
 
+	// Start HTTP server
+	startServer(r)
+}
+
+// startServer runs the HTTP server with graceful shutdown
+func startServer(handler http.Handler) {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8081"
+	}
+	addr := ":" + port
+
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", cfg.Port),
-		Handler: r,
+		Addr:         addr,
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
-	// graceful shutdown
-	idle := make(chan struct{})
+	// Run server in a goroutine
 	go func() {
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt)
-		<-stop
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(ctx)
-		close(idle)
+		log.Printf("🚀 Server is running on %s\n", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
 	}()
 
-	fmt.Printf("listening on %s\n", cfg.Port)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		fmt.Println("server error:", err)
+	// Wait for shutdown signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+	log.Println("🛑 Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server forced to shutdown: %v", err)
 	}
-	<-idle
-	fmt.Println("server stopped")
+
+	log.Println("✅ Server exited gracefully")
 }

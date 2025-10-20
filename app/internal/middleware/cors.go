@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"net/http"
-	"strings"
+	//"strings"
 )
 
 // CORS returns middleware that sets CORS headers based on allowed origins list.
