@@ -13,7 +13,16 @@ Checkpoint 2 : API Part 1: CRUD (Create,Read,Update,Delete) With additional serv
 
 Checkpoint 3/ Test 1 Submission - Final Github submission and Presentation 
 
-Requirements (Go version, Docker)
+https://drive.google.com/drive/folders/1hl30pvjhgzhCxNu5FxCMv3OxjUaxNmi5?usp=sharing
+Link to the google drive with 
+Checkpoint 2 - a Bulk of the work is featured here 
+Final Submission - Long video: goes over all of the major pinpoints of the code and a mini demo at the end of the API only
+
+
+Requirements (docker and docker compose)
+
+
+
 
 
   Quickstart Guide
