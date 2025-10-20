@@ -13,34 +13,46 @@ Checkpoint 2 : API Part 1: CRUD (Create,Read,Update,Delete) With additional serv
 
 Checkpoint 3/ Test 1 Submission - Final Github submission and Presentation 
 
-Requirements (Go version, Docker)
+https://drive.google.com/drive/folders/1hl30pvjhgzhCxNu5FxCMv3OxjUaxNmi5?usp=sharing
+Link to the google drive with 
+Checkpoint 2 - a Bulk of the work is featured here 
+Final Submission - Long video: goes over all of the major pinpoints of the code and a mini demo at the end of the API only
 
-Client:
- Version:           27.5.1
- API version:       1.47
- Go version:        go1.22.2
- Git commit:        27.5.1-0ubuntu3~24.04.2
- Built:             Mon Jun  2 11:51:53 2025
- OS/Arch:           linux/amd64
- Context:           default
 
-Server: Docker Desktop 4.44.3 (202357)
- Engine:
-  Version:          28.3.2
-  API version:      1.51 (minimum version 1.24)
-  Go version:       go1.24.5
-  Git commit:       e77ff99
-  Built:            Wed Jul  9 16:13:55 2025
-  OS/Arch:          linux/amd64
-  Experimental:     false
- containerd:
-  Version:          1.7.27
-  GitCommit:        05044ec0a9a75232cad458027ca83437aae3f4da
- runc:
-  Version:          1.2.5
-  GitCommit:        v1.2.5-0-g59923ef
- docker-init:
-  Version:          0.19.0
-  GitCommit:        de40ad0
+Requirements (docker and docker compose)
+
+
+
+
 
   Quickstart Guide
+
+  Download the repository and upzip it 
+
+Now download and use the Latest version of docker to run this file 
+
+locate the docker compose file in  test1-national-inservice-api
+
+Then 
+ type "docker compose up"
+
+ Wait a while for the services to build after you are ready for testing and grading 
+
+ now open another terminal 
+  cd test1-national-inservice-api/ 
+
+now 
+
+cd app 
+
+You are now in the root of the project to start testing the project in its entirety
+
+To make the html file run on the Docker server please DISABLE THE DEFAULT APACHE SERVICE ON LINUX 
+
+use this line to stop it if you want to view the file or else the the website will be blank 
+
+sudo systemctl disable apache2
+
+then renable it using
+
+sudo systemctl enable apache2
