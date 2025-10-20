@@ -18,7 +18,9 @@ Requirements (Go version, Docker)
 
   Quickstart Guide
 
-PLease use the Latest version of docker to run this file 
+  Download the repository and upzip it 
+
+Now download and use the Latest version of docker to run this file 
 
 locate the docker compose file in  test1-national-inservice-api
 
@@ -43,5 +45,5 @@ use this line to stop it if you want to view the file or else the the website wi
 sudo systemctl disable apache2
 
 then renable it using
- 
+
 sudo systemctl enable apache2
