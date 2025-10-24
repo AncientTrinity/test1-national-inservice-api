@@ -56,3 +56,11 @@ sudo systemctl disable apache2
 then renable it using
 
 sudo systemctl enable apache2
+
+
+
+so do come testing make sure your in the main /app folder 
+
+then copy paste this go test folder/filname.go -v
+
+example go test test/auth_test.go

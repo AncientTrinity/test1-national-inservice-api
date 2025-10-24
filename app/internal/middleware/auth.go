@@ -3,48 +3,63 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// RequireAuth checks for a valid JWT in Authorization header
+// context key for user claims
+type ctxKey string
+
+const ctxUserKey ctxKey = "userClaims"
+
+// RequireAuth verifies JWT in Authorization header and puts claims into context.
 func RequireAuth(secret []byte) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			tokenStr := r.Header.Get("Authorization")
-			if tokenStr == "" {
-				http.Error(w, "missing token", http.StatusUnauthorized)
+			auth := r.Header.Get("Authorization")
+			if auth == "" {
+				http.Error(w, "missing Authorization header", http.StatusUnauthorized)
 				return
 			}
-			// Parse token
-			token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+			tokenStr := strings.TrimSpace(strings.TrimPrefix(auth, "Bearer"))
+
+			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 				return secret, nil
 			})
 			if err != nil || !token.Valid {
 				http.Error(w, "invalid token", http.StatusUnauthorized)
 				return
 			}
-			// store claims in context
-			ctx := context.WithValue(r.Context(), "user", token.Claims)
+
+			ctx := context.WithValue(r.Context(), ctxUserKey, token.Claims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-// RequireRole ensures the user has a specific role in claims
+// RequireRole ensures the user's "role" claim matches required role.
 func RequireRole(role string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := r.Context().Value("user").(jwt.MapClaims)
-			if !ok {
+			val := r.Context().Value(ctxUserKey)
+			if val == nil {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
-			if claims["role"] != role {
-				http.Error(w, "forbidden", http.StatusForbidden)
+			claims, ok := val.(jwt.Claims)
+			if !ok {
+				http.Error(w, "invalid token claims", http.StatusUnauthorized)
 				return
 			}
-			next.ServeHTTP(w, r)
+			// support MapClaims (common case)
+			if mc, ok := claims.(jwt.MapClaims); ok {
+				if mcRole, _ := mc["role"].(string); mcRole == role {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			http.Error(w, "forbidden", http.StatusForbidden)
 		})
 	}
 }

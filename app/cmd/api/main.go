@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	//"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -21,23 +20,23 @@ import (
 )
 
 func main() {
-	// Load configuration
+	// Load environment configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("config error: %v", err)
+		log.Fatalf("❌ config error: %v", err)
 	}
 
-	// Connect to database
+	// Connect to PostgreSQL
 	pool, err := db.Connect(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("db connect: %v", err)
+		log.Fatalf("❌ database connection error: %v", err)
 	}
 	defer pool.Close()
 
-	// Create router
+	// Router setup
 	r := chi.NewRouter()
 
-	// CORS configuration
+	// Global middlewares
 	r.Use(chiCors.Handler(chiCors.Options{
 		AllowedOrigins:   []string{cfg.CORSAllowedOrigins},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -45,22 +44,21 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           300,
 	}))
-
-	// Global middlewares
 	r.Use(middleware.JSONMiddleware)
 
 	// Rate limiter
 	rl := middleware.NewRateLimiter(cfg.RateLimitRPS, cfg.RateLimitBurst)
 	r.Use(rl.LimitMiddleware)
 
-	// Handlers
+	// Initialize core handler
 	h := handlers.NewHandler(pool)
 
-	// Metrics
+	// Metrics endpoint
 	r.Get("/metrics", h.MetricsHandler)
 
-	// API routes
+	// ========== API Routes ==========
 	r.Route("/v1", func(r chi.Router) {
+
 		// Persons
 		r.Route("/persons", func(r chi.Router) {
 			r.Get("/", h.ListPersons)
@@ -96,7 +94,6 @@ func main() {
 			Password: cfg.SMTPPass,
 			From:     cfg.EmailFrom,
 		})
-
 		authHandler := handlers.NewAuthHandler(pool, []byte(cfg.JWTSecret), cfg.JWTExpiryHours, emailer)
 
 		// Auth routes
@@ -104,26 +101,24 @@ func main() {
 		r.Post("/auth/login", authHandler.Login)
 		r.Post("/auth/reset-password", authHandler.ResetPassword)
 
-		// Protected routes example
+		// Protected routes
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireAuth([]byte(cfg.JWTSecret)))
 
-			// Example protected endpoint
-			r.Get("/v1/person/{id}", h.GetPerson)
+			r.Get("/persons/{id}", h.GetPerson) // example protected route
 
-			// Admin-only routes
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.RequireRole("admin"))
-				r.Post("/v1/courses", h.CreateCourse)
+				r.Post("/courses", h.CreateCourse)
 			})
 		})
 	})
 
-	// Start HTTP server
+	// Start server
 	startServer(r)
 }
 
-// startServer runs the HTTP server with graceful shutdown
+// startServer starts the HTTP server and supports graceful shutdown
 func startServer(handler http.Handler) {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -139,18 +134,17 @@ func startServer(handler http.Handler) {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Run server in a goroutine
 	go func() {
-		log.Printf("🚀 Server is running on %s\n", addr)
+		log.Printf("🚀 Server running on %s\n", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			log.Fatalf("❌ listen: %s\n", err)
 		}
 	}()
 
-	// Wait for shutdown signal
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit
+	// Graceful shutdown
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
 	log.Println("🛑 Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
